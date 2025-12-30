@@ -1,70 +1,72 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-<meta charset="UTF-8">
-<title>Dòng tiền chứng khoán VN</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, Inter, Roboto, sans-serif;
-  background: #0b0f1a;
-  color: #e5e7eb;
-}
-header {
-  padding: 12px 16px;
-  font-size: 18px;
-  font-weight: 600;
-}
-.card {
-  background: #111827;
-  border-radius: 10px;
-  padding: 12px;
-  margin: 12px 16px;
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-  overflow-x: auto; /* Để không tràn màn hình */
-  display: block;
-}
-th, td {
-  padding: 8px;
-  font-size: 14px;
-  text-align: right;
-}
-th {
-  color: #9ca3af;
-  font-weight: 500;
-}
-td:first-child, th:first-child {
-  text-align: left;
-}
-.up {
-  color: #22c55e;
-}
-.down {
-  color: #ef4444;
-}
-.tag {
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 12px;
-}
-.in {
-  background: #052e1b;
-  color: #22c55e;
-}
-.out {
-  background: #3f1d1d;
-  color: #ef4444;
-}
-.loading {
-  color: #9ca3af;
-  font-size: 14px;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>Dòng tiền chứng khoán VN</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, Inter, Roboto, sans-serif;
+            background: #0b0f1a;
+            color: #e5e7eb;
+        }
+        header {
+            padding: 12px 16px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .card {
+            background: #111827;
+            border-radius: 10px;
+            padding: 12px;
+            margin: 12px 16px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th,
+        td {
+            padding: 8px;
+            font-size: 14px;
+            text-align: right;
+        }
+        th {
+            color: #9ca3af;
+            font-weight: 500;
+        }
+        td:first-child,
+        th:first-child {
+            text-align: left;
+        }
+        .up {
+            color: #22c55e;
+        }
+        .down {
+            color: #ef4444;
+        }
+        .tag {
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .in {
+            background: #052e1b;
+            color: #22c55e;
+        }
+        .out {
+            background: #3f1d1d;
+            color: #ef4444;
+        }
+        .loading {
+            color: #9ca3af;
+            font-size: 14px;
+        }
+    </style>
 </head>
+
 <body>
 
 <header>📊 Dòng tiền chứng khoán Việt Nam</header>
@@ -72,120 +74,114 @@ td:first-child, th:first-child {
 <div class="card" id="market">Đang tải dữ liệu…</div>
 
 <div class="card">
-  <b>Top tiền vào</b>
-  <table>
-    <thead><tr><th>Mã</th><th>GTGD</th><th>%</th><th>Tiền</th></tr></thead>
-    <tbody id="in"></tbody>
-  </table>
+    <b>Top tiền vào</b>
+    <table>
+        <thead>
+            <tr>
+                <th>Mã</th>
+                <th>GTGD</th>
+                <th>%</th>
+                <th>Tiền</th>
+            </tr>
+        </thead>
+        <tbody id="in"></tbody>
+    </table>
 </div>
 
 <div class="card">
-  <b>Top tiền ra</b>
-  <table>
-    <thead><tr><th>Mã</th><th>GTGD</th><th>%</th><th>Tiền</th></tr></thead>
-    <tbody id="out"></tbody>
-  </table>
+    <b>Top tiền ra</b>
+    <table>
+        <thead>
+            <tr>
+                <th>Mã</th>
+                <th>GTGD</th>
+                <th>%</th>
+                <th>Tiền</th>
+            </tr>
+        </thead>
+        <tbody id="out"></tbody>
+    </table>
 </div>
 
 <script>
 // ================= CONFIG =================
-// FireAnt public (qua proxy CORS)
-// API URL lấy dữ liệu từ proxy, bypass CORS
-const API =
-  "https://api.allorigins.win/get?url=" +
-  encodeURIComponent("https://restv2.fireant.vn/symbols?exchange=HOSE");
+// Marketstack API Key (thay 'YOUR_API_KEY' bằng API Key của bạn)
+const API_KEY = 'YOUR_API_KEY';
+const API_URL = `http://api.marketstack.com/v1/eod?access_key=${API_KEY}&symbols=`;
 
-function money(v, p) {
-  return v * p;
+// Danh sách các mã cổ phiếu cần theo dõi (mã HOSE, HNX)
+const STOCK_SYMBOLS = ['VNM', 'VCB', 'SSI', 'HDB', 'HPG'];
+
+// ================= LOGIC =================
+function fetchStockData() {
+    const symbols = STOCK_SYMBOLS.join(',');
+    const url = `${API_URL}${symbols}`;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (!data || !data.data) {
+                throw new Error('Không nhận được dữ liệu từ API.');
+            }
+
+            // Xử lý dữ liệu
+            const list = data.data.map(stock => {
+                const value = stock.close; // Giá đóng cửa của cổ phiếu
+                const pct = ((stock.close - stock.open) / stock.open) * 100; // Phần trăm thay đổi
+                return {
+                    s: stock.symbol,
+                    v: value.toFixed(2),
+                    p: pct.toFixed(2),
+                    m: (value * pct).toFixed(2)
+                };
+            });
+
+            // Top tiền vào và tiền ra
+            const moneyIn = [...list].filter(x => x.p > 0).sort((a, b) => b.m - a.m).slice(0, 10);
+            const moneyOut = [...list].filter(x => x.p < 0).sort((a, b) => a.m - b.m).slice(0, 10);
+
+            updateUI(list, moneyIn, moneyOut);
+        })
+        .catch(error => {
+            console.error(error);
+            document.getElementById('market').innerHTML = '<span class="loading">Không tải được dữ liệu. Vui lòng kiểm tra API Key!</span>';
+        });
 }
 
-function tag(val) {
-  if (val > 0) return '<span class="tag in">VÀO</span>';
-  if (val < 0) return '<span class="tag out">RA</span>';
-  return "-";
-}
+function updateUI(list, moneyIn, moneyOut) {
+    // Cập nhật thị trường
+    document.getElementById('market').innerHTML = `
+        <b>Thị trường (Realtime)</b><br>
+        Số mã theo dõi: ${list.length}<br>
+        Tổng số tiền giao dịch: <b>${list.reduce((total, x) => total + parseFloat(x.m), 0).toFixed(2)} tỷ</b>
+    `;
 
-function formatNumber(num) {
-  return num.toLocaleString("vi-VN");
-}
-
-function fetchData() {
-  // Lấy dữ liệu từ API
-  fetch(API)
-    .then((res) => res.json())
-    .then((data) => {
-      const rawData = JSON.parse(data.contents); // FireAnt data nằm trong `contents`
-      const list = rawData.slice(0, 100).map((x) => {
-        const value = (x.price || 0) * (x.totalTradingVolume || 0) / 1e9; // Đơn vị: tỷ
-        const pct = x.percentChange ?? 0; // Tránh `undefined`
-        return {
-          s: x.symbol,
-          v: Math.round(value),
-          p: pct,
-          m: money(value, pct),
-        };
-      });
-
-      // Chia mã theo dòng tiền vào/ra và xếp hạng
-      const moneyIn = [...list]
-        .filter((x) => x.m > 0)
-        .sort((a, b) => b.m - a.m)
-        .slice(0, 10);
-      const moneyOut = [...list]
-        .filter((x) => x.m < 0)
-        .sort((a, b) => a.m - b.m)
-        .slice(0, 10);
-
-      // Cập nhật DOM phần tổng quan
-      market.innerHTML = `
-        <b>HOSE (Realtime)</b><br>
-        Số mã: ${list.length}<br>
-        Tổng dòng tiền: <b>${Math.round(
-          list.reduce((a, b) => a + b.m, 0)
-        )} tỷ</b>
-      `;
-
-      // Cập nhật DOM cho phần top tiền vào
-      in.innerHTML = moneyIn
-        .map(
-          (x) => `
+    // Cập nhật top tiền vào
+    document.getElementById('in').innerHTML = moneyIn.map(x => `
         <tr>
-          <td><b>${x.s}</b></td>
-          <td>${formatNumber(x.v)}</td>
-          <td class="up">+${x.p}%</td>
-          <td>${tag(x.m)}</td>
+            <td><b>${x.s}</b></td>
+            <td>${x.v} VNĐ</td>
+            <td class="up">+${x.p}%</td>
+            <td>${x.m} VNĐ</td>
         </tr>
-      `
-        )
-        .join("");
+    `).join('');
 
-      // Cập nhật DOM cho phần top tiền ra
-      out.innerHTML = moneyOut
-        .map(
-          (x) => `
+    // Cập nhật top tiền ra
+    document.getElementById('out').innerHTML = moneyOut.map(x => `
         <tr>
-          <td><b>${x.s}</b></td>
-          <td>${formatNumber(x.v)}</td>
-          <td class="down">${x.p}%</td>
-          <td>${tag(x.m)}</td>
+            <td><b>${x.s}</b></td>
+            <td>${x.v} VNĐ</td>
+            <td class="down">${x.p}%</td>
+            <td>${x.m} VNĐ</td>
         </tr>
-      `
-        )
-        .join("");
-    })
-    .catch((err) => {
-      // Xử lý lỗi kết nối API
-      console.error(err);
-      market.innerHTML =
-        '<span class="loading">API không phản hồi. Vui lòng kiểm tra kết nối hoặc thử lại sau.</span>';
-    });
+    `).join('');
 }
 
-// Gọi lần đầu khi tải trang
-fetchData();
-// Cập nhật dữ liệu sau mỗi phút
-setInterval(fetchData, 60000); // Tự động cập nhật mỗi 60s
+// ================= START =================
+fetchStockData();
+setInterval(fetchStockData, 60000); // Tự động cập nhật mỗi phút
 </script>
 
 </body>
+
 </html>
