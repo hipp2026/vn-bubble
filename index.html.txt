@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>VN Bubble</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body style="background:#0f172a;color:white;">
+  <h3 style="text-align:center;">VN Bubble Test</h3>
+  <svg id="chart"></svg>
+  <script src="app.js"></script>
+</body>
+</html>
