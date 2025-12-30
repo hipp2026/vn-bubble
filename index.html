@@ -1,45 +1,44 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
     <meta charset="UTF-8">
-    <title>Dòng tiền chứng khoán VN</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dòng tiền chứng khoán VN - Real-time</title>
     <style>
         body {
             margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, Inter, Roboto, sans-serif;
-            background: #0b0f1a;
-            color: #e5e7eb;
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #e5e5e5;
         }
         header {
             padding: 12px 16px;
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 20px;
+            font-weight: bold;
+            background: #1E1E1E;
         }
         .card {
-            background: #111827;
+            margin: 20px;
+            padding: 20px;
+            background: #1E1E1E;
             border-radius: 10px;
-            padding: 12px;
-            margin: 12px 16px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 20px;
         }
-        th,
-        td {
+        th, td {
             padding: 8px;
             font-size: 14px;
-            text-align: right;
+            text-align: center;
         }
         th {
-            color: #9ca3af;
-            font-weight: 500;
+            background: #282828;
+            color: #aaa;
         }
-        td:first-child,
-        th:first-child {
-            text-align: left;
+        td {
+            background: #202020;
         }
         .up {
             color: #22c55e;
@@ -47,141 +46,97 @@
         .down {
             color: #ef4444;
         }
-        .tag {
-            padding: 2px 6px;
-            border-radius: 6px;
-            font-size: 12px;
-        }
-        .in {
-            background: #052e1b;
-            color: #22c55e;
-        }
-        .out {
-            background: #3f1d1d;
-            color: #ef4444;
-        }
         .loading {
-            color: #9ca3af;
             font-size: 14px;
+            color: #aaa;
         }
     </style>
 </head>
-
 <body>
-
-<header>📊 Dòng tiền chứng khoán Việt Nam</header>
-
-<div class="card" id="market">Đang tải dữ liệu…</div>
+<header>📊 Dòng tiền chứng khoán Việt Nam (Real-time)</header>
 
 <div class="card">
-    <b>Top tiền vào</b>
-    <table>
-        <thead>
-            <tr>
-                <th>Mã</th>
-                <th>GTGD</th>
-                <th>%</th>
-                <th>Tiền</th>
-            </tr>
-        </thead>
-        <tbody id="in"></tbody>
-    </table>
+    <b>Thị Trường: </b>
+    <span id="status" class="loading">Đang kết nối WebSocket...</span>
 </div>
 
 <div class="card">
-    <b>Top tiền ra</b>
+    <b>Dữ Liệu Real-time</b>
     <table>
         <thead>
             <tr>
                 <th>Mã</th>
-                <th>GTGD</th>
-                <th>%</th>
-                <th>Tiền</th>
+                <th>Giá Hiện Tại</th>
+                <th>Thay Đổi (%)</th>
+                <th>Khối Lượng GD</th>
             </tr>
         </thead>
-        <tbody id="out"></tbody>
+        <tbody id="stock-table">
+            <!-- Dữ liệu từ WebSocket sẽ được hiển thị tại đây -->
+        </tbody>
     </table>
 </div>
 
 <script>
-// ================= CONFIG =================
-// Marketstack API Key (thay 'YOUR_API_KEY' bằng API Key của bạn)
-const API_KEY = 'YOUR_API_KEY';
-const API_URL = `http://api.marketstack.com/v1/eod?access_key=${API_KEY}&symbols=`;
+    // ===================== CONFIG WEBSOCKET ======================
+    const socket = new WebSocket("wss://price-vndirect.vndirect.com.vn/realtime");
 
-// Danh sách các mã cổ phiếu cần theo dõi (mã HOSE, HNX)
-const STOCK_SYMBOLS = ['VNM', 'VCB', 'SSI', 'HDB', 'HPG'];
+    // Mã chứng khoán cần theo dõi
+    const STOCK_CODES = ["VNM", "VCB", "HPG", "SSI"];
 
-// ================= LOGIC =================
-function fetchStockData() {
-    const symbols = STOCK_SYMBOLS.join(',');
-    const url = `${API_URL}${symbols}`;
+    // Kết nối WebSocket
+    socket.onopen = () => {
+        console.log("WebSocket connected!");
+        document.getElementById('status').innerText = "Đã kết nối WebSocket!";
 
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            if (!data || !data.data) {
-                throw new Error('Không nhận được dữ liệu từ API.');
-            }
+        // Gửi yêu cầu subscribe (đăng ký nhận dữ liệu real-time)
+        socket.send(JSON.stringify({
+            type: "subscribe",
+            codes: STOCK_CODES
+        }));
+    };
 
-            // Xử lý dữ liệu
-            const list = data.data.map(stock => {
-                const value = stock.close; // Giá đóng cửa của cổ phiếu
-                const pct = ((stock.close - stock.open) / stock.open) * 100; // Phần trăm thay đổi
-                return {
-                    s: stock.symbol,
-                    v: value.toFixed(2),
-                    p: pct.toFixed(2),
-                    m: (value * pct).toFixed(2)
-                };
-            });
+    // Xử lý tin nhắn từ server
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
 
-            // Top tiền vào và tiền ra
-            const moneyIn = [...list].filter(x => x.p > 0).sort((a, b) => b.m - a.m).slice(0, 10);
-            const moneyOut = [...list].filter(x => x.p < 0).sort((a, b) => a.m - b.m).slice(0, 10);
+        // Kiểm tra định dạng dữ liệu
+        if (data.type === "price" && data.data) {
+            // Hiển thị dữ liệu
+            updateTable(data.data);
+        }
+    };
 
-            updateUI(list, moneyIn, moneyOut);
-        })
-        .catch(error => {
-            console.error(error);
-            document.getElementById('market').innerHTML = '<span class="loading">Không tải được dữ liệu. Vui lòng kiểm tra API Key!</span>';
+    // Hiển thị dữ liệu trong bảng
+    function updateTable(data) {
+        const table = document.getElementById("stock-table");
+        table.innerHTML = ""; // Xóa dữ liệu cũ
+
+        data.forEach((stock) => {
+            const changeClass = stock.changePercent >= 0 ? "up" : "down";
+            table.innerHTML += `
+                <tr>
+                    <td>${stock.code}</td>
+                    <td>${stock.lastPrice}</td>
+                    <td class="${changeClass}">${stock.changePercent.toFixed(2)}%</td>
+                    <td>${stock.totalVolume}</td>
+                </tr>
+            `;
         });
-}
+    }
 
-function updateUI(list, moneyIn, moneyOut) {
-    // Cập nhật thị trường
-    document.getElementById('market').innerHTML = `
-        <b>Thị trường (Realtime)</b><br>
-        Số mã theo dõi: ${list.length}<br>
-        Tổng số tiền giao dịch: <b>${list.reduce((total, x) => total + parseFloat(x.m), 0).toFixed(2)} tỷ</b>
-    `;
+    // Khi kết nối bị đóng
+    socket.onclose = () => {
+        console.log("WebSocket disconnected.");
+        document.getElementById('status').innerText = "Kết nối WebSocket bị đóng!";
+    };
 
-    // Cập nhật top tiền vào
-    document.getElementById('in').innerHTML = moneyIn.map(x => `
-        <tr>
-            <td><b>${x.s}</b></td>
-            <td>${x.v} VNĐ</td>
-            <td class="up">+${x.p}%</td>
-            <td>${x.m} VNĐ</td>
-        </tr>
-    `).join('');
-
-    // Cập nhật top tiền ra
-    document.getElementById('out').innerHTML = moneyOut.map(x => `
-        <tr>
-            <td><b>${x.s}</b></td>
-            <td>${x.v} VNĐ</td>
-            <td class="down">${x.p}%</td>
-            <td>${x.m} VNĐ</td>
-        </tr>
-    `).join('');
-}
-
-// ================= START =================
-fetchStockData();
-setInterval(fetchStockData, 60000); // Tự động cập nhật mỗi phút
+    // Xử lý lỗi
+    socket.onerror = (error) => {
+        console.error("WebSocket Error: ", error);
+        document.getElementById('status').innerText = "Lỗi WebSocket! Vui lòng kiểm tra lại.";
+    };
 </script>
 
 </body>
-
 </html>
