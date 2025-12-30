@@ -1,8 +1,0 @@
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-}
-svg {
-  width: 100vw;
-  height: 90vh;
-}
