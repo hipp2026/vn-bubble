@@ -1,198 +1,192 @@
+
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>VN30 Bubbles</title>
+<title>VN30 Bubble Map</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
-
 <style>
 html,body{
   margin:0;
   padding:0;
-  background:#0b1220;
   overflow:hidden;
-  font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;
+  background:#0b0f1a;
+  font-family:-apple-system,BlinkMacSystemFont,Inter,Roboto;
 }
-#panel{
+#hint{
   position:fixed;
-  top:12px;left:12px;
-  background:#0f172a;
-  color:#e5e7eb;
-  padding:10px 14px;
-  border-radius:14px;
-  font-size:13px;
-  box-shadow:0 10px 30px rgba(0,0,0,.5);
-  z-index:10;
-}
-#panel button{
-  background:#020617;
-  border:1px solid #1e293b;
-  color:#e5e7eb;
-  border-radius:10px;
-  padding:4px 8px;
-  margin:2px;
-  cursor:pointer;
-}
-#panel button.active{background:#2563eb}
-#tip{
-  position:fixed;
-  pointer-events:none;
-  background:#020617;
-  color:#e5e7eb;
-  padding:8px 10px;
-  border-radius:10px;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  color:#888;
   font-size:12px;
-  display:none;
-  box-shadow:0 10px 25px rgba(0,0,0,.5);
 }
 </style>
 </head>
 <body>
 
-<div id="panel">
-  <b>VN30</b><br/>
-  <button data-mode="price" class="active">% Price</button>
-  <button data-mode="volume">Volume</button>
-</div>
-<div id="tip"></div>
+<div id="hint">Drag bubbles • Color = % change • Size = market cap</div>
 
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
 <script>
-/* ================= APP ================= */
-const app=new PIXI.Application({
+
+// =================== DATA (VN30 DEMO) ===================
+const DATA = [
+ {s:"VCB",p:1.8,cap:420},
+ {s:"VIC",p:-0.9,cap:380},
+ {s:"VHM",p:2.6,cap:360},
+ {s:"FPT",p:3.2,cap:310},
+ {s:"HPG",p:-1.4,cap:290},
+ {s:"MWG",p:0.7,cap:240},
+ {s:"CTG",p:1.1,cap:230},
+ {s:"TCB",p:-2.2,cap:260},
+ {s:"GAS",p:0.4,cap:210},
+ {s:"SSI",p:4.1,cap:180},
+ {s:"VPB",p:-3.6,cap:190},
+ {s:"VNM",p:0.0,cap:220}
+];
+
+// =================== APP ===================
+const app = new PIXI.Application({
   resizeTo:window,
-  backgroundColor:0x0b1220,
-  antialias:true,
-  autoDensity:true
+  backgroundAlpha:0,
+  antialias:true
 });
 document.body.appendChild(app.view);
 
-/* ================= CAMERA ================= */
-const world=new PIXI.Container();
+const world = new PIXI.Container();
+world.position.set(window.innerWidth/2, window.innerHeight/2);
 app.stage.addChild(world);
-let zoom=1, tx=0, ty=0;
-function applyCam(){
-  world.scale.set(zoom);
-  world.position.set(tx,ty);
+
+// =================== UTILS ===================
+const lerp=(a,b,t)=>a+(b-a)*t;
+const noise=(x,y,t)=>Math.sin(x*0.002+t)+Math.cos(y*0.002-t);
+
+// =================== SHADER ===================
+const frag = `
+precision mediump float;
+varying vec2 vTextureCoord;
+uniform float radius;
+uniform vec3 color;
+uniform float glow;
+
+void main(){
+  vec2 uv = vTextureCoord*2.0-1.0;
+  float d = length(uv);
+  float alpha = smoothstep(1.0,0.85,d);
+  float g = smoothstep(1.0,0.4,d)*glow;
+  vec3 col = color + g;
+  gl_FragColor = vec4(col, alpha);
 }
-window.addEventListener("wheel",e=>{
-  zoom*=e.deltaY>0?0.92:1.08;
-  zoom=Math.max(.4,Math.min(2.5,zoom));
-  applyCam();
-});
+`;
 
-/* ================= DATA ================= */
-const DATA=[
- {s:"VCB",p:1.8,v:18,cap:450},
- {s:"BID",p:-0.6,v:15,cap:280},
- {s:"CTG",p:2.4,v:22,cap:200},
- {s:"FPT",p:3.2,v:12,cap:190},
- {s:"HPG",p:-1.2,v:30,cap:170},
- {s:"VPB",p:1.1,v:25,cap:140},
- {s:"TCB",p:0.4,v:20,cap:160},
- {s:"VHM",p:-2.1,v:14,cap:220},
- {s:"VNM",p:0.2,v:10,cap:180},
- {s:"MWG",p:-1.7,v:9,cap:90}
-];
+function bubbleShader(){
+  return new PIXI.Filter(null,frag,{
+    radius:50,
+    color:[0.6,0.6,0.6],
+    glow:0.5
+  });
+}
 
-let mode="price";
-
-/* ================= UTILS ================= */
-const color=p=>p>0?0x22c55e:p<0?0xef4444:0x64748b;
-
-/* ================= BUBBLE ================= */
+// =================== BUBBLE ===================
 class Bubble{
   constructor(d){
     this.d=d;
-    this.r=20;
-    this.x=Math.random()*800-400;
-    this.y=Math.random()*600-300;
-    this.vx=(Math.random()-.5)*2;
-    this.vy=(Math.random()-.5)*2;
-    this.pulse=Math.random()*10;
+    this.x=(Math.random()-0.5)*600;
+    this.y=(Math.random()-0.5)*400;
+    this.vx=0; this.vy=0;
+    this.fx=Math.random()*1000;
+    this.fy=Math.random()*1000;
 
-    this.g=new PIXI.Graphics();
-    this.txt=new PIXI.Text(d.s,{fill:"#fff",fontSize:14,fontWeight:"700"});
-    this.txt.anchor.set(.5);
-    world.addChild(this.g,this.txt);
+    this.currentColor=[0.6,0.6,0.6];
 
-    this.g.interactive=true;
-    this.g.on("pointerover",e=>showTip(e,d));
-    this.g.on("pointerout",hideTip);
+    this.mesh=new PIXI.Sprite(PIXI.Texture.WHITE);
+    this.mesh.anchor.set(0.5);
+    this.shader=bubbleShader();
+    this.mesh.filters=[this.shader];
+    this.mesh.interactive=true;
+    this.mesh.cursor="pointer";
+
+    this.drag=false;
+    this.mesh
+      .on("pointerdown",e=>{
+        this.drag=true;
+        this.data=e.data;
+        this.vx=this.vy=0;
+      })
+      .on("pointerup",()=>this.drag=false)
+      .on("pointerupoutside",()=>this.drag=false);
+
+    // LABEL
+    this.label=new PIXI.Text(d.s,{
+      fill:"#fff",
+      fontSize:12,
+      fontWeight:"600"
+    });
+    this.label.anchor.set(0.5);
+
+    world.addChild(this.mesh);
+    world.addChild(this.label);
   }
-  calc(){
-    this.r=
-      mode==="price"
-        ?20+Math.abs(this.d.p)*6
-        :20+this.d.v*1.5;
-  }
-  draw(){
-    this.g.clear();
-    const pr=this.r+Math.sin(this.pulse)*2;
-    this.g.beginFill(color(this.d.p),.18);
-    this.g.drawCircle(0,0,pr+6);
-    this.g.endFill();
-    this.g.beginFill(color(this.d.p),1);
-    this.g.drawCircle(0,0,pr);
-    this.g.endFill();
-    this.g.position.set(this.x,this.y);
-    this.txt.position.set(this.x,this.y+1);
-  }
-  step(){
-    this.pulse+=0.05+this.d.v*0.002;
-    this.x+=this.vx;this.y+=this.vy;
-    this.vx*=0.99;this.vy*=0.99;
+
+  update(t){
+    // size
+    this.r=24+Math.log(this.d.cap+1)*6;
+    this.mesh.width=this.mesh.height=this.r*2;
+    this.shader.uniforms.radius=this.r;
+
+    // color ramp
+    let target;
+    const pct=this.d.p;
+    const m=Math.min(Math.abs(pct)/5,1);
+
+    if(pct>0) target=[lerp(0.4,0.1,m),lerp(0.7,1,m),lerp(0.4,0.3,m)];
+    else if(pct<0) target=[lerp(0.5,1,m),lerp(0.4,0.2,m),lerp(0.4,0.2,m)];
+    else target=[0.6,0.6,0.6];
+
+    for(let i=0;i<3;i++)
+      this.currentColor[i]+= (target[i]-this.currentColor[i])*0.08;
+
+    this.shader.uniforms.color=this.currentColor;
+    this.shader.uniforms.glow=0.4+m*0.9;
+
+    // drag
+    if(this.drag){
+      const p=this.data.getLocalPosition(world);
+      this.x=p.x; this.y=p.y;
+    }else{
+      // flow
+      const n=noise(this.fx,this.fy,t*0.0005);
+      const a=n*Math.PI;
+      this.vx+=Math.cos(a)*0.02;
+      this.vy+=Math.sin(a)*0.02;
+      this.fx++; this.fy++;
+
+      // center pull
+      this.vx+=-this.x*0.00012;
+      this.vy+=-this.y*0.00012;
+
+      this.x+=this.vx;
+      this.y+=this.vy;
+      this.vx*=0.985;
+      this.vy*=0.985;
+    }
+
+    this.mesh.position.set(this.x,this.y);
+    this.label.position.set(this.x,this.y);
   }
 }
 
+// =================== RUN ===================
 const bubbles=DATA.map(d=>new Bubble(d));
 
-/* ================= PHYSICS ================= */
-function collide(){
-  for(let i=0;i<bubbles.length;i++)
-    for(let j=i+1;j<bubbles.length;j++){
-      const a=bubbles[i],b=bubbles[j];
-      const dx=b.x-a.x,dy=b.y-a.y;
-      const dist=Math.hypot(dx,dy);
-      const min=a.r+b.r+6;
-      if(dist<min){
-        const nx=dx/dist,ny=dy/dist;
-        const push=(min-dist)*0.02;
-        a.vx-=nx*push;a.vy-=ny*push;
-        b.vx+=nx*push;b.vy+=ny*push;
-      }
-    }
-}
-
-/* ================= TOOLTIP ================= */
-const tip=document.getElementById("tip");
-function showTip(e,d){
-  tip.style.display="block";
-  tip.innerHTML=`<b>${d.s}</b><br/>%: ${d.p}<br/>Vol: ${d.v}`;
-}
-function hideTip(){tip.style.display="none";}
-window.addEventListener("mousemove",e=>{
-  tip.style.left=e.clientX+12+"px";
-  tip.style.top=e.clientY+12+"px";
+app.ticker.add(t=>{
+  bubbles.forEach(b=>b.update(t));
 });
 
-/* ================= UI ================= */
-document.querySelectorAll("#panel button").forEach(b=>{
-  b.onclick=()=>{
-    document.querySelectorAll("#panel button").forEach(x=>x.classList.remove("active"));
-    b.classList.add("active");
-    mode=b.dataset.mode;
-    bubbles.forEach(x=>x.calc());
-  };
-});
-
-/* ================= LOOP ================= */
-bubbles.forEach(b=>b.calc());
-applyCam();
-app.ticker.add(()=>{
-  collide();
-  bubbles.forEach(b=>{b.step();b.draw();});
+// =================== RESIZE ===================
+window.addEventListener("resize",()=>{
+  world.position.set(innerWidth/2,innerHeight/2);
 });
 </script>
 </body>
