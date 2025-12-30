@@ -63,31 +63,43 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const noise=(x,y,t)=>Math.sin(x*0.002+t)+Math.cos(y*0.002-t);
 
 // =================== SHADER ===================
-const frag = `
 precision mediump float;
 varying vec2 vTextureCoord;
-uniform float radius;
+
 uniform vec3 color;
 uniform float glow;
 
 void main(){
-  vec2 uv = vTextureCoord*2.0-1.0;
+  vec2 uv = vTextureCoord * 2.0 - 1.0;
   float d = length(uv);
-  float alpha = smoothstep(1.0,0.85,d);
-  float g = smoothstep(1.0,0.4,d)*glow;
-  vec3 col = color + g;
+
+  // cắt ngoài hình tròn
+  if(d > 1.0) discard;
+
+  // ===== alpha mềm =====
+  float alpha = smoothstep(1.0, 0.85, d);
+
+  // ===== viền bong bóng =====
+  float rim = smoothstep(0.9, 1.0, d);
+
+  // ===== highlight lệch =====
+  vec2 lightDir = vec2(-0.35, -0.35);
+  float highlight = smoothstep(0.3, -0.2, dot(uv, lightDir));
+
+  // ===== lõi mờ =====
+  float core = smoothstep(0.0, 0.5, d);
+
+  // ===== màu =====
+  vec3 col =
+      color * (0.85 + highlight * 0.25)
+    + rim * vec3(1.0) * 0.35
+    + glow * 0.25;
+
+  // giảm trắng ở tâm
+  col *= (1.0 - core * 0.25);
+
   gl_FragColor = vec4(col, alpha);
 }
-`;
-
-function bubbleShader(){
-  return new PIXI.Filter(null,frag,{
-    radius:50,
-    color:[0.6,0.6,0.6],
-    glow:0.5
-  });
-}
-
 // =================== BUBBLE ===================
 class Bubble{
   constructor(d){
