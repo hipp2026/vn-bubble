@@ -1,31 +1,49 @@
-from vnstock import Vnstock
-from datetime import datetime
+from xnoapi import client
+from xnoapi.vn.data import stocks
 import json
+from datetime import datetime
 
-symbols = ["VCB", "FPT", "HPG", "BID", "CTG"]
+# ===== INIT =====
+client()  # nếu có API KEY thì truyền vào
 
-data = {}
+VN30 = [
+    "VCB","BID","CTG","TCB","VPB",
+    "FPT","VNM","HPG","MWG","GAS",
+    "VIC","VHM","VRE","SSI","STB",
+    "MSN","SAB","PLX","POW","BVH",
+    "ACB","SHB","TPB","MBB","HDB",
+    "PNJ","GVR","BCM","VJC","VIB"
+]
 
-for sym in symbols:
-    stock = Vnstock().stock(symbol=sym, source="VCI")
-    df = stock.quote.history(
-        start="2024-01-01",
-        end=datetime.today().strftime("%Y-%m-%d"),
-        interval="1D"
-    )
+result = []
 
-    last = df.iloc[-1]
-    prev = df.iloc[-2]
+for s in VN30:
+    try:
+        info = stocks.get_stock_info(s)
 
-    data[sym] = {
-        "price": float(last["close"]),
-        "volume": int(last["volume"]),
-        "change_pct": round(
-            (last["close"] - prev["close"]) / prev["close"] * 100, 2
-        )
-    }
+        price = info["close"]
+        vol = info["volume"]
+        change = info["pct_change"]
+
+        money = price * vol * change / 100 / 1e9  # tỷ VND
+
+        result.append({
+            "s": s,
+            "price": price,
+            "vol": vol,
+            "p": change,
+            "money": round(money, 2)
+        })
+    except:
+        pass
+
+data = {
+    "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    "group": "VN30",
+    "stocks": result
+}
 
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 
-print("✅ data.json updated")
+print("UPDATED data.json")
