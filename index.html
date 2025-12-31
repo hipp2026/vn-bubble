@@ -1,15 +1,114 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <title>VN Stock Money Flow</title>
+  <meta charset="UTF-8">
+  <title>VN30 – Dòng tiền</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    body{
+      margin:0;
+      background:#0b0e11;
+      color:#eaecef;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+    }
+    .container{
+      max-width:900px;
+      margin:auto;
+      padding:16px;
+    }
+    h1{
+      font-size:20px;
+      margin-bottom:4px;
+    }
+    small{
+      color:#888;
+    }
+    h2{
+      font-size:16px;
+      margin:20px 0 8px;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+    }
+    td{
+      padding:8px;
+      border-bottom:1px solid #1e2329;
+    }
+    td:nth-child(1){
+      font-weight:600;
+    }
+    .up{ color:#00c853; }
+    .down{ color:#ff5252; }
+    .money{
+      text-align:right;
+      font-variant-numeric: tabular-nums;
+    }
+    .pct{
+      text-align:right;
+    }
+  </style>
 </head>
 
 <body>
-  <svg id="chart"></svg>
-  <script src="script.js"></script>
+<div class="container">
+  <h1>VN30 – Theo dõi dòng tiền</h1>
+  <small>Cập nhật: <span id="time">--</span></small>
+
+  <h2>🟢 Top tiền vào</h2>
+  <table>
+    <tbody id="moneyIn"></tbody>
+  </table>
+
+  <h2>🔴 Top tiền ra</h2>
+  <table>
+    <tbody id="moneyOut"></tbody>
+  </table>
+</div>
+
+<script>
+fetch("data.json")
+.then(res => res.json())
+.then(data => {
+  document.getElementById("time").innerText = data.time || "--";
+
+  const stocks = data.stocks || [];
+
+  const moneyIn = stocks
+    .filter(x => x.money > 0)
+    .sort((a,b) => b.money - a.money)
+    .slice(0,10);
+
+  const moneyOut = stocks
+    .filter(x => x.money < 0)
+    .sort((a,b) => a.money - b.money)
+    .slice(0,10);
+
+  document.getElementById("moneyIn").innerHTML =
+    moneyIn.map(x => `
+      <tr>
+        <td>${x.s}</td>
+        <td class="money">${x.money.toFixed(1)} tỷ</td>
+        <td class="pct up">+${x.p}%</td>
+      </tr>
+    `).join("");
+
+  document.getElementById("moneyOut").innerHTML =
+    moneyOut.map(x => `
+      <tr>
+        <td>${x.s}</td>
+        <td class="money">${x.money.toFixed(1)} tỷ</td>
+        <td class="pct down">${x.p}%</td>
+      </tr>
+    `).join("");
+})
+.catch(err => {
+  document.body.innerHTML =
+    "<p style='color:red;padding:20px'>Không load được data.json</p>";
+});
+</script>
+
 </body>
 </html>
