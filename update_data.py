@@ -1,8 +1,8 @@
 from vnstock import Vnstock
-import json
 from datetime import datetime
+import json
 
-symbols = ["VCB", "FPT", "HPG", "VNINDEX"]
+symbols = ["VCB", "FPT", "HPG", "BID", "CTG"]
 
 data = {}
 
@@ -15,17 +15,17 @@ for sym in symbols:
     )
 
     last = df.iloc[-1]
+    prev = df.iloc[-2]
 
     data[sym] = {
         "price": float(last["close"]),
         "volume": int(last["volume"]),
-        "change_pct": float(
-            (last["close"] - df.iloc[-2]["close"])
-            / df.iloc[-2]["close"] * 100
+        "change_pct": round(
+            (last["close"] - prev["close"]) / prev["close"] * 100, 2
         )
     }
 
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 
-print("✅ Updated data.json")
+print("✅ data.json updated")
