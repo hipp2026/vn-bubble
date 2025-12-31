@@ -1,0 +1,44 @@
+<script>
+function money(x){
+  return x.price * x.vol * x.p / 100 / 1e9; // tỷ đồng
+}
+function tag(v){
+  return v>0
+    ? '<span class="tag in">VÀO</span>'
+    : '<span class="tag out">RA</span>';
+}
+
+fetch("data.json")
+.then(r=>r.json())
+.then(d=>{
+  const list = d.stocks.map(x=>{
+    return {...x, m: money(x)};
+  });
+
+  const moneyIn = [...list].filter(x=>x.m>0).sort((a,b)=>b.m-a.m);
+  const moneyOut = [...list].filter(x=>x.m<0).sort((a,b)=>a.m-b.m);
+
+  market.innerHTML = `
+    <b>${d.market.name}</b><br>
+    Tổng GTGD: <b>${d.market.total.toLocaleString()} tỷ</b>
+  `;
+
+  in.innerHTML = moneyIn.map(x=>`
+    <tr>
+      <td><b>${x.s}</b></td>
+      <td>${(x.price*x.vol/1e9).toFixed(1)}</td>
+      <td class="up">+${x.p}%</td>
+      <td>${tag(x.m)}</td>
+    </tr>
+  `).join("");
+
+  out.innerHTML = moneyOut.map(x=>`
+    <tr>
+      <td><b>${x.s}</b></td>
+      <td>${(x.price*x.vol/1e9).toFixed(1)}</td>
+      <td class="down">${x.p}%</td>
+      <td>${tag(x.m)}</td>
+    </tr>
+  `).join("");
+});
+</script>
