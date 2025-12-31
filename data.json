@@ -1,0 +1,31 @@
+{
+  "VN30": {
+    "index": 0.84,
+    "total": 15230,
+    "money": "IN",
+    "sectors": [],
+    "stocks": [
+      { "symbol": "FPT", "value": 2380, "change": 2.35, "flow": "IN" },
+      { "symbol": "VCB", "value": 2140, "change": 1.12, "flow": "IN" },
+      { "symbol": "HPG", "value": 1960, "change": 3.8,  "flow": "IN" },
+      { "symbol": "SSI", "value": 1820, "change": 4.2,  "flow": "IN" },
+      { "symbol": "MWG", "value": 1710, "change": -1.35,"flow": "OUT" },
+      { "symbol": "TCB", "value": 1640, "change": -0.82,"flow": "OUT" },
+      { "symbol": "VHM", "value": 1580, "change": -2.15,"flow": "OUT" }
+    ]
+  },
+  "VN100": {
+    "index": -0.27,
+    "total": 24860,
+    "money": "OUT",
+    "sectors": [],
+    "stocks": [
+      { "symbol": "GAS", "value": 2940, "change": -1.1,"flow": "OUT" },
+      { "symbol": "VNM", "value": 2620, "change": -0.6,"flow": "OUT" },
+      { "symbol": "FPT", "value": 2480, "change": 2.1, "flow": "IN" },
+      { "symbol": "HPG", "value": 2210, "change": 1.9, "flow": "IN" },
+      { "symbol": "SSI", "value": 1980, "change": 3.5, "flow": "IN" },
+      { "symbol": "POW", "value": 1830, "change": -1.8,"flow": "OUT" }
+    ]
+  }
+}
