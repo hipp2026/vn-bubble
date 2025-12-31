@@ -1,113 +1,140 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>VN30 – Dòng tiền</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <style>
-    body{
-      margin:0;
-      background:#0b0e11;
-      color:#eaecef;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
-    }
-    .container{
-      max-width:900px;
-      margin:auto;
-      padding:16px;
-    }
-    h1{
-      font-size:20px;
-      margin-bottom:4px;
-    }
-    small{
-      color:#888;
-    }
-    h2{
-      font-size:16px;
-      margin:20px 0 8px;
-    }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:14px;
-    }
-    td{
-      padding:8px;
-      border-bottom:1px solid #1e2329;
-    }
-    td:nth-child(1){
-      font-weight:600;
-    }
-    .up{ color:#00c853; }
-    .down{ color:#ff5252; }
-    .money{
-      text-align:right;
-      font-variant-numeric: tabular-nums;
-    }
-    .pct{
-      text-align:right;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Dòng tiền chứng khoán VN</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,Inter,Roboto;
+  background:#0b0f1a;
+  color:#e5e7eb;
+}
+header{
+  padding:12px 16px;
+  font-size:18px;
+  font-weight:600;
+}
+section{
+  padding:12px 16px;
+}
+.card{
+  background:#111827;
+  border-radius:10px;
+  padding:12px;
+  margin-bottom:12px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  padding:8px;
+  text-align:right;
+  font-size:14px;
+}
+th{
+  color:#9ca3af;
+  font-weight:500;
+}
+td:first-child,th:first-child{
+  text-align:left;
+}
+.up{ color:#22c55e; }
+.down{ color:#ef4444; }
+.neutral{ color:#9ca3af; }
+.tag{
+  padding:2px 6px;
+  border-radius:6px;
+  font-size:12px;
+}
+.in{ background:#052e1b; color:#22c55e; }
+.out{ background:#3f1d1d; color:#ef4444; }
+</style>
 </head>
-
 <body>
-<div class="container">
-  <h1>VN30 – Theo dõi dòng tiền</h1>
-  <small>Cập nhật: <span id="time">--</span></small>
 
-  <h2>🟢 Top tiền vào</h2>
-  <table>
-    <tbody id="moneyIn"></tbody>
-  </table>
+<header>📊 Dòng tiền chứng khoán Việt Nam</header>
 
-  <h2>🔴 Top tiền ra</h2>
-  <table>
-    <tbody id="moneyOut"></tbody>
-  </table>
-</div>
+<section class="card">
+<b>Toàn thị trường (demo)</b><br>
+VN-Index: <span class="up">+1.12%</span><br>
+GTGD: <b>23,500 tỷ</b><br>
+Dòng tiền: <span class="tag in">VÀO</span>
+</section>
+
+<section class="card">
+<b>Dòng tiền theo ngành</b>
+<table>
+<thead>
+<tr>
+<th>Ngành</th>
+<th>GTGD (tỷ)</th>
+<th>%</th>
+<th>Tiền</th>
+</tr>
+</thead>
+<tbody id="sector"></tbody>
+</table>
+</section>
+
+<section class="card">
+<b>Top cổ phiếu dòng tiền</b>
+<table>
+<thead>
+<tr>
+<th>Mã</th>
+<th>GTGD</th>
+<th>%</th>
+<th>Tiền</th>
+</tr>
+</thead>
+<tbody id="stocks"></tbody>
+</table>
+</section>
 
 <script>
-fetch("data.json")
-.then(res => res.json())
-.then(data => {
-  document.getElementById("time").innerText = data.time || "--";
+// ===== DATA DEMO =====
+const sectors = [
+ {n:"Ngân hàng",v:12500,p:1.4},
+ {n:"Chứng khoán",v:8200,p:-0.8},
+ {n:"Thép",v:4300,p:2.1},
+ {n:"BĐS",v:6900,p:-1.5}
+];
 
-  const stocks = data.stocks || [];
+const stocks = [
+ {s:"VCB",v:1800,p:1.2},
+ {s:"TCB",v:1500,p:-2.1},
+ {s:"FPT",v:2100,p:3.4},
+ {s:"SSI",v:1600,p:4.8},
+ {s:"HPG",v:1900,p:-1.3}
+];
 
-  const moneyIn = stocks
-    .filter(x => x.money > 0)
-    .sort((a,b) => b.money - a.money)
-    .slice(0,10);
+// ===== RENDER =====
+function moneyTag(p){
+  if(p>0) return '<span class="tag in">VÀO</span>';
+  if(p<0) return '<span class="tag out">RA</span>';
+  return '<span class="neutral">–</span>';
+}
 
-  const moneyOut = stocks
-    .filter(x => x.money < 0)
-    .sort((a,b) => a.money - b.money)
-    .slice(0,10);
+sector.innerHTML = sectors.map(x=>`
+<tr>
+<td>${x.n}</td>
+<td>${x.v.toLocaleString()}</td>
+<td class="${x.p>0?'up':'down'}">${x.p>0?'+':''}${x.p}%</td>
+<td>${moneyTag(x.p)}</td>
+</tr>
+`).join('');
 
-  document.getElementById("moneyIn").innerHTML =
-    moneyIn.map(x => `
-      <tr>
-        <td>${x.s}</td>
-        <td class="money">${x.money.toFixed(1)} tỷ</td>
-        <td class="pct up">+${x.p}%</td>
-      </tr>
-    `).join("");
-
-  document.getElementById("moneyOut").innerHTML =
-    moneyOut.map(x => `
-      <tr>
-        <td>${x.s}</td>
-        <td class="money">${x.money.toFixed(1)} tỷ</td>
-        <td class="pct down">${x.p}%</td>
-      </tr>
-    `).join("");
-})
-.catch(err => {
-  document.body.innerHTML =
-    "<p style='color:red;padding:20px'>Không load được data.json</p>";
-});
+stocks.innerHTML = stocks.map(x=>`
+<tr>
+<td><b>${x.s}</b></td>
+<td>${x.v}</td>
+<td class="${x.p>0?'up':'down'}">${x.p>0?'+':''}${x.p}%</td>
+<td>${moneyTag(x.p)}</td>
+</tr>
+`).join('');
 </script>
 
 </body>
