@@ -19,10 +19,9 @@ th{color:#9ca3af;font-weight:500;}
 td:first-child,th:first-child{text-align:left;}
 .up{color:#22c55e;}
 .down{color:#ef4444;}
-.tag{padding:2px 6px;border-radius:6px;font-size:12px;}
-.in{background:#052e1b;color:#22c55e;}
-.out{background:#3f1d1d;color:#ef4444;}
-.loading{color:#9ca3af;font-size:14px;}
+.tag{padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;}
+.in{background:#064e3b;color:#22c55e;}
+.out{background:#7f1d1d;color:#ef4444;}
 </style>
 </head>
 <body>
@@ -32,64 +31,78 @@ td:first-child,th:first-child{text-align:left;}
 <div class="card" id="market">Đang tải dữ liệu…</div>
 
 <div class="card">
-<b>Top tiền vào</b>
+<b>Top tiền vào (tăng giá + GTGD cao)</b>
 <table>
-<thead><tr><th>Mã</th><th>GTGD</th><th>%</th><th>Tiền</th></tr></thead>
+<thead><tr><th>Mã</th><th>Giá</th><th>KL</th><th>%</th><th>GTGD (tỷ)</th></tr></thead>
 <tbody id="in"></tbody>
 </table>
 </div>
 
 <div class="card">
-<b>Top tiền ra</b>
+<b>Top tiền ra (giảm giá + GTGD cao)</b>
 <table>
-<thead><tr><th>Mã</th><th>GTGD</th><th>%</th><th>Tiền</th></tr></thead>
+<thead><tr><th>Mã</th><th>Giá</th><th>KL</th><th>%</th><th>GTGD (tỷ)</th></tr></thead>
 <tbody id="out"></tbody>
 </table>
 </div>
 
 <script>
-function money(x){
-  return x.price * x.vol * x.p / 100 / 1e9; // tỷ đồng
-}
-function tag(v){
-  return v>0
-    ? '<span class="tag in">VÀO</span>'
-    : '<span class="tag out">RA</span>';
+// Hàm tính giá trị giao dịch (GTGD) tỷ đồng
+function gtgd(x) {
+  return (x.price * x.vol / 1e9).toFixed(1); // tỷ đồng, 1 chữ số thập phân
 }
 
 fetch("data.json")
-.then(r=>r.json())
-.then(d=>{
-  const list = d.stocks.map(x=>{
-    return {...x, m: money(x)};
+  .then(r => {
+    if (!r.ok) throw new Error("Không tải được data.json");
+    return r.json();
+  })
+  .then(d => {
+    const stocks = d.stocks;
+
+    // Sắp xếp theo GTGD tuyệt đối giảm dần, phân loại theo chiều giá
+    const moneyIn = stocks
+      .filter(x => x.p > 0)
+      .sort((a, b) => b.price * b.vol - a.price * a.vol)
+      .slice(0, 10);
+
+    const moneyOut = stocks
+      .filter(x => x.p < 0)
+      .sort((a, b) => b.price * b.vol - a.price * a.vol)
+      .slice(0, 10);
+
+    // Cập nhật thông tin thị trường
+    document.getElementById("market").innerHTML = `
+      <b>${d.market.name}</b><br>
+      Tổng GTGD toàn sàn: <b>${d.market.total.toLocaleString()} tỷ đồng</b>
+    `;
+
+    // Top tiền vào
+    document.getElementById("in").innerHTML = moneyIn.map(x => `
+      <tr>
+        <td><b>${x.s}</b></td>
+        <td>${x.price.toLocaleString()}</td>
+        <td>${(x.vol/1000).toFixed(0)}K</td>
+        <td class="up">+${x.p}%</td>
+        <td><span class="tag in">${gtgd(x)}</span></td>
+      </tr>
+    `).join("") || "<tr><td colspan='5'>Không có dữ liệu</td></tr>";
+
+    // Top tiền ra
+    document.getElementById("out").innerHTML = moneyOut.map(x => `
+      <tr>
+        <td><b>${x.s}</b></td>
+        <td>${x.price.toLocaleString()}</td>
+        <td>${(x.vol/1000).toFixed(0)}K</td>
+        <td class="down">${x.p}%</td>
+        <td><span class="tag out">${gtgd(x)}</span></td>
+      </tr>
+    `).join("") || "<tr><td colspan='5'>Không có dữ liệu</td></tr>";
+
+  })
+  .catch(err => {
+    document.getElementById("market").innerHTML = "Lỗi tải dữ liệu: " + err.message;
   });
-
-  const moneyIn = [...list].filter(x=>x.m>0).sort((a,b)=>b.m-a.m);
-  const moneyOut = [...list].filter(x=>x.m<0).sort((a,b)=>a.m-b.m);
-
-  market.innerHTML = `
-    <b>${d.market.HOSE}</b><br>
-    Tổng GTGD: <b>${d.market.23500.toLocaleString()} tỷ</b>
-  `;
-
-  in.innerHTML = moneyIn.map(x=>`
-    <tr>
-      <td><b>${x.s}</b></td>
-      <td>${(x.price*x.vol/1e9).toFixed(1)}</td>
-      <td class="up">+${x.p}%</td>
-      <td>${tag(x.m)}</td>
-    </tr>
-  `).join("");
-
-  out.innerHTML = moneyOut.map(x=>`
-    <tr>
-      <td><b>${x.s}</b></td>
-      <td>${(x.price*x.vol/1e9).toFixed(1)}</td>
-      <td class="down">${x.p}%</td>
-      <td>${tag(x.m)}</td>
-    </tr>
-  `).join("");
-});
 </script>
 
 </body>
