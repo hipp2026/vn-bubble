@@ -1,25 +1,12 @@
-fetch("data.json")
-  .then(res => res.json())
-  .then(data => {
-    const container = document.getElementById("bubbles");
-
-    Object.entries(data).forEach(([symbol, info]) => {
-      const div = document.createElement("div");
-      div.className = "bubble";
-
-      const color = info.change_pct >= 0 ? "green" : "red";
-      const size = Math.min(Math.abs(info.volume) / 50000, 120);
-
-      div.style.width = size + "px";
-      div.style.height = size + "px";
-      div.style.background = color;
-
-      div.innerHTML = `
-        <strong>${symbol}</strong><br>
-        ${info.price}<br>
-        ${info.change_pct.toFixed(2)}%
-      `;
-
-      container.appendChild(div);
-    });
-  });
+{
+  "VCB": {
+    "price": 89200,
+    "volume": 1854321,
+    "change_pct": 1.25
+  },
+  "FPT": {
+    "price": 134500,
+    "volume": 2345123,
+    "change_pct": -0.48
+  }
+}
