@@ -68,7 +68,7 @@ fetch("data.json")
   const moneyOut = [...list].filter(x=>x.m<0).sort((a,b)=>a.m-b.m);
 
   market.innerHTML = `
-    <b>${d.market.HOSE}</b><br>
+    <b>${HOSE}</b><br>
     Tổng GTGD: <b>${d.market.total.toLocaleString()} tỷ</b>
   `;
 
